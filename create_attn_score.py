@@ -331,11 +331,11 @@ output2 = model.layers[5].output
 w1 = ['나', '밥', '먹다','바다','가다']
 w2 = ['나', '국수', '먹다', '웹툰','보다']
 w3 = ['디지털', '포럼', '웹툰', '산업', '지속', '발전', '방안', '모색', '웹툰', '생태계', '대한', '이해', '위해', '세미나', '준비']
-w4 = ['삼성','전자']
-w5 = ['김정은']
+w4 = ['웹툰']
+w5 = ['마음','소리']
 xt = []
-www = [w1,w2,w3]
-for _ in range(3):
+www = [w1,w2,w3,w4,w5]
+for _ in range(5):
     temp = []#[word['[START]']]
     ww = www[_]
     for w in ww:
@@ -358,6 +358,10 @@ print(re.tolist())
 
 
 X = [np.array([xt[0]]),np.array([xt[2]])]
+re = model.predict(X)
+print(re.tolist())
+
+X = [np.array([xt[3]]),np.array([xt[4]])]
 re = model.predict(X)
 print(re.tolist())
 
@@ -499,7 +503,7 @@ print(cos_sim(pred3,pred2))
 print(w4,w5)
 print(cos_sim(pred4,pred5))
 model = Word2Vec.load('word2vec-KCC150/word2vec-KCC150.model')
-print(cos_sim((model.wv[w4[0]]+model.wv[w4[1]])/2,model.wv[w5[0]]))
+print(cos_sim((model.wv[w5[0]]+model.wv[w5[1]])/2,model.wv[w4[0]]))
 print(w3,w5)
 print(cos_sim(pred3,pred5))
 # print(pred1,pred2,pred3)
