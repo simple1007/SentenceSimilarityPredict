@@ -12,6 +12,7 @@ model = FastText.load('ilbe_fasttext/ilbe_fasttext.model')
 
 count = 0
 maxlen = 250
+minlen = 3
 morphs_files = 'ilbe_nouns_40000.txt'
 origin_files = 'ilbe_x_40000.txt'
 
@@ -39,7 +40,8 @@ def set_word2index(l, o, sentencepiece):
 
         # x.append(word[ll])
         temp.append(model.wv[ll])
-    x.append(sentencepiece.encode_as_ids(o))
+    x = sentencepiece.encode_as_ids(o)
+    # print(x)
     xo = sentencepiece.encode_as_pieces(o)
     length.append(len(x))
     return x, xo, temp
@@ -119,7 +121,7 @@ def to_numpy(sentencepiece, batch_size=32):
                 x2, xo2, temp2 = set_word2index(c, o, sentencepiece)
                 origin_sp.write(' '.join(xo)+'\n')
                 origin_cp.write(' '.join(xo2)+'\n')
-                if len(temp) == 0 or len(temp2) == 0:
+                if len(temp) == 0 or len(temp2) == 0 or (len(x) >= maxlen or len(x) <= minlen) or (len(x2) >= maxlen or len(x2) <= minlen):
                     continue
                 length_ = len(x)
                 length2_ = len(x2)
@@ -175,3 +177,4 @@ sp.load(vocab_file)
 to_numpy(sp)
 length = sorted(length,reverse=True)
 print(length[:20])
+print(len(length)/sum(length))
