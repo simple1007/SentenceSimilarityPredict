@@ -7,7 +7,7 @@ def softmax(x):
     e_x = np.exp(x - np.max(x))
     return e_x / e_x.sum()
 
-model = FastText.load('word2vec-KCC150/word2vec-KCC150.model')
+model = FastText.load('ilbe_fasttext/ilbe_fasttext.model')
 # x = open('x.txt','w',encoding='utf-8')
 # y = open('y.txt','w',encoding='utf-8')
 # print(model.wv['pad'])
@@ -80,26 +80,66 @@ origin_files = 'ilbe_x.txt'
 import random
 if True:
     with open(f'preprocessing/{morphs_files}',encoding='utf-8') as f:
-        with open(f'preprocessing/{morphs_files}',encoding='utf-8') as ff:
-        text = f.readlines()    
-        # random.shuffle(text)
-        random_ = np.arange(X.shape[0])
+        with open(f'preprocessing/{origin_files}',encoding='utf-8') as ff:
+            text = f.readlines()    
+            orign = ff.readlines()
+            # random.shuffle(text)
+            random_ = np.arange(X.shape[0])
 
-        text = np.array(text)
-        text = text[random_]
+            text = np.array(text)
+            origin = np.array(origin)
+
+            text = text[random_]
+            orign = orign[random_]
         
         with open('preprocessing/compare1.txt','w',encoding='utf-8') as f:
             f.writelines(text)
+        with open('preprocessing/origin1.txt','w',encoding='utf-8') as f:
+            f.writelines(origin)
     with open(f'preprocessing/{morphs_files}',encoding='utf-8') as f:
-        text = f.readlines()    
-        random.shuffle(text)
+        with open(f'preprocessing/{origin_files}',encoding='utf-8') as ff:
+            text = f.readlines()    
+            orign = ff.readlines()
+            # random.shuffle(text)
+            random_ = np.arange(X.shape[0])
+
+            text = np.array(text)
+            origin = np.array(origin)
+
+            text = text[random_]
+            orign = orign[random_]
+        
         with open('preprocessing/compare2.txt','w',encoding='utf-8') as f:
             f.writelines(text)
+        with open('preprocessing/origin2.txt','w',encoding='utf-8') as f:
+            f.writelines(origin)
     with open(f'preprocessing/{morphs_files}',encoding='utf-8') as f:
-        text = f.readlines()    
-        # random.shuffle(text)
+        with open(f'preprocessing/{origin_files}',encoding='utf-8') as ff:
+            text = f.readlines()    
+            orign = ff.readlines()
+            # random.shuffle(text)
+            # random_ = np.arange(X.shape[0])
+
+            # text = np.array(text)
+            # origin = np.array(origin)
+
+            # text = text[random_]
+            # orign = orign[random_]
+        
         with open('preprocessing/compare3.txt','w',encoding='utf-8') as f:
             f.writelines(text)
+        with open('preprocessing/origin3.txt','w',encoding='utf-8') as f:
+            f.writelines(origin)
+    # with open(f'preprocessing/{morphs_files}',encoding='utf-8') as f:
+    #     text = f.readlines()    
+    #     random.shuffle(text)
+    #     with open('preprocessing/compare2.txt','w',encoding='utf-8') as f:
+    #         f.writelines(text)
+    # with open(f'preprocessing/{morphs_files}',encoding='utf-8') as f:
+    #     text = f.readlines()    
+    #     # random.shuffle(text)
+    #     with open('preprocessing/compare3.txt','w',encoding='utf-8') as f:
+    #         f.writelines(text)
     for iiii in range(3):
         with open('preprocessing/morphs.txt',encoding='utf-8') as f:
             with open(f'preprocessing/compare{iiii+1}.txt',encoding='utf-8') as ff:
