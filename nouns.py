@@ -1,4 +1,6 @@
 from konlpy.tag import Okt
+from utils.utils import normalization
+
 import pandas as pd
 
 df = pd.read_csv('rawdata/ilbe_comments_1.2m.tsv', sep = '\t')
@@ -12,9 +14,10 @@ fx = open('preprocessing/ilbe_x.txt','w',encoding='utf-8')
 for l in df['댓글']:
     #print(l)
     l = l.strip()
-   
+    l = normalization(l)
     noun = o.nouns(l)
     noun = ' '.join(noun)
+    
     if noun.strip() != '':
         result.write(noun.strip()+'\n')
         fx.write(l+'\n')
