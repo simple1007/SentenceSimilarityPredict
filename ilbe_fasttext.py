@@ -1,9 +1,11 @@
 from gensim.models.fasttext import Word2Vec,FastText
+import re
 data = []
 
 with open('preprocessing/ht_x.txt',encoding='utf-8') as f:
     for l in f:
         l = l.strip()
+        l = re.sub(' +',' ',l)
         data.append(l.split(' '))
 
 ftmodel = Word2Vec(min_count=2,vector_size=300,workers=6)

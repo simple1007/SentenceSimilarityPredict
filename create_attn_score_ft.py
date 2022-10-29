@@ -12,7 +12,7 @@ from utils.utils import cos_sim
 
 from tensorflow.keras.layers import LSTM, Bidirectional, TimeDistributed, Dense, Input, Embedding, Lambda, Add, MaxPooling1D, GlobalAveragePooling1D
 
-EPOCH = 7
+EPOCH = 50
 VOCAB_LEN = 10000
 BATCH = 32
 maxlen = 300
@@ -28,7 +28,7 @@ def dataset():
 
 def dataset_ht():
     for _ in range(EPOCH):
-        for i in range(1,6794):
+        for i in range(1,6795):
             X = np.load('ht/%05d_x.npy'%i)
             # X2 = np.load(f'data/{i}_x2.npy')
             Y = np.load('ht/%05d_y.npy'%i)
@@ -44,15 +44,18 @@ class ModelBuild(tf.keras.Model):
         self.emb = Embedding(VOCAB_LEN,32)#(input)
         # self.emb2 = Embedding(VOCAB_LEN, 32)#(input2)
 
-        self.bilstm = Bidirectional(LSTM(150))#(emb)
+        self.bilstm = Bidirectional(LSTM(64,return_sequences=True))#(emb)
         # self.bilstm2 = Bidirectional(LSTM(64))#(emb2)
         #self.multiply = tf.multiply(bilstm,bilstm2)
-        # self.avg = GlobalAveragePooling1D()#(multiply)
+        self.avg = GlobalAveragePooling1D()#(multiply)
 
         self.dense = Dense(32, activation = 'relu')#(multiply)
 
-        self.result = Dense(2)#(bilstm_)
-        
+        self.result1 = Dense(1,name='1')#(bilstm_)
+        self.result2 = Dense(1,name='2')
+        # self.result3 = Dense(1,name='3')
+        # self.result4 = Dense(1,name='4')
+
     def build(self, input_shape):
         super(ModelBuild, self).build(input_shape)
         # self.input_ = Input(input_shape[0])
@@ -71,21 +74,26 @@ class ModelBuild(tf.keras.Model):
         # print(inputs)
         x = self.emb(inputs)
         x = self.bilstm(x)
-
+        # x = self.avg(x)
         # x2 = self.emb2(inputs[1])
         # x2 = self.bilstm2(x2)
 
         # multiply = tf.concat([x,x2],-1)
         
-        # a = self.avg(multiply)
+        a = self.avg(x)
         a = self.dense(x)
 
-        return self.result(a)
+        return self.result1(a)#,self.result2(a),self.result3(a),self.result4(a)]
         # model = tf.keras.models.Model(inputs=[input, input2], outputs=output)
 
         # return output
 
 if False:
+    from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+
+    callbacks = [EarlyStopping(monitor='val_loss',patience=3), ModelCheckpoint("hatespeech_sentence_embedding.model",monitor="val_loss",save_best_only=True)]
+    # callbacks = [ModelCheckpoint("hatespeech_sentence_embedding.model",monitor="val_loss",save_best_only=True)]
+
     model = ModelBuild(maxlen)
     # model = mb.getmodel()
     # model.build([(None,maxlen),(None,maxlen)])
@@ -95,7 +103,7 @@ if False:
     model.compile(optimizer="adam",metrics=["mae"],loss="mse")
 
     ds = dataset_ht()
-    model.fit(ds, epochs=EPOCH, batch_size=BATCH, steps_per_epoch=5436,validation_data=ds,validation_steps=1358)
+    model.fit(ds, epochs=EPOCH, batch_size=BATCH, steps_per_epoch=5436,validation_data=ds,validation_steps=1358, callbacks=callbacks)
 
     model.save('embedding.model')
 
@@ -120,7 +128,7 @@ if False:
     for i in range(72):
         print(cos_sim(Y[0][i],pred[0][i]))
 
-model = tf.keras.models.load_model('embedding.model')#,custom_objects={'ModelBuild':ModelBuild})
+model = tf.keras.models.load_model("hatespeech_sentence_embedding.model")#,custom_objects={'ModelBuild':ModelBuild})
 
 
 input = Input((maxlen))
@@ -160,30 +168,47 @@ output = model.bilstm(emb)
 # inputf = f'preprocessing/{origin_files}'
 # spm_train(inputf)
 model = tf.keras.models.Model(inputs=input,outputs=output)
+model.summary()
 sp = spm.SentencePieceProcessor()
 vocab_file = 'ilbe_ht_spm_model/ilbe_spm.model'
 sp.load(vocab_file)
 ll = []
 xt = []
-www = ['페미들 극혐 버려지들','친구랑 놀러 가고 싶다.','꼴페미 김정은 빨갱이들']
-f = open('dictionary.txt',encoding='utf-8')
+www = ['페미들 극혐 버려지들','친구','꼴페미 김정은 빨갱이들','나 밥 학교']
+f = open('dictionary_gen.txt',encoding='utf-8')
 gen_dic_x = []
 gen_cnt = 0
+
+from konlpy.tag import Okt
+o = Okt()
+length = []
 for l in f:
     if l.startswith('//'):
         continue
     l = l.replace('#','')
     temp = []
+    # l = o.nouns(l)
+    # l = ' '.join(l)
+    # l = ['틀딱들', '급식충', '사이']
+    # l = ' '.join(l)
     temp = sp.encode_as_ids(l.strip())
+    length.append(len(temp))
     temp = temp + [0] * (maxlen - len(temp))
     gen_cnt += 1
     gen_dic_x.append(temp)
 
 temp_gen = model(np.array(gen_dic_x))
 
-gen_dic = np.zeros(300)
-for tg in temp_gen:
-    gen_dic += tg
+gen_dic = np.zeros(128)
+# print(temp_gen[0].shape)
+for index, tg in enumerate(temp_gen):
+    lenn = length[index]
+    # print(tg.shape)
+    predd = tg[:lenn,:]
+    print(predd.shape)
+    predd = np.sum(predd,axis=0)
+    print(predd.shape)
+    gen_dic += predd / lenn
 
 gen_dic = gen_dic / gen_cnt
 np.save('emb/gen',gen_dic)
@@ -192,100 +217,159 @@ f.close()
 f = open('dictionary_soc.txt',encoding='utf-8')
 soc_dic_x = []
 soc_cnt = 0
+length = []
 for l in f:
     if l.startswith('//'):
         continue
     l = l.replace('#','')
     temp = []
+    # l = o.nouns(l)
+    # l = ' '.join(l)
+    # l = ['틀딱들', '급식충', '사이']
+    # l = ' '.join(l)
     temp = sp.encode_as_ids(l.strip())
+    length.append(len(temp))
     temp = temp + [0] * (maxlen - len(temp))
     soc_cnt += 1
     soc_dic_x.append(temp)
 
 temp_soc = model(np.array(soc_dic_x))
 
-soc_dic = np.zeros(300)
-for tg in temp_soc:
-    soc_dic += tg
+soc_dic = np.zeros(128)
+for index, tg in enumerate(temp_soc):
+    lenn = length[index]
+    predd = tg[:lenn,:]
+    predd = np.sum(predd,axis=0)
+    print(predd.shape)
+    soc_dic += predd / lenn
 
 soc_dic = soc_dic / soc_cnt
 np.save('emb/soc',soc_dic)
 f.close()
 
-for _ in range(3):
-    temp = []#[word['[START]']]
-    ww = www[_]
-    # ww = '페미들 극혐 버려지들'
-    temp = sp.encode_as_ids(ww)
-    print(sp.encode_as_pieces(ww))
-    ll.append(len(temp))
-    # for w in ww:
-    #     temp.append(word[w])
-    # temp = temp# + [word['[SEP]']]
-    temp = temp + [0] * (maxlen - len(temp))
-    xt.append(temp)
-l1 = ll[0]# + 2
-l2 = ll[1]#5  # + 2
-l3 = ll[2]#4  # + 2
+# f = open('dictionary_age.txt',encoding='utf-8')
+# age_dic_x = []
+# age_cnt = 0
+# for l in f:
+#     if l.startswith('//'):
+#         continue
+#     l = l.replace('#','')
+#     temp = []
+#     temp = sp.encode_as_ids(l.strip())
+#     temp = temp + [0] * (maxlen - len(temp))
+#     age_cnt += 1
+#     age_dic_x.append(temp)
 
-# l4 = ll[3]
-# l5 = ll[4]
-# l6 = ll[5]
-# l7 = ll[6]
-# l8 = ll[7]
-# l9 = ll[8]
-# l10 = ll[9]
-# l11 = ll[10]
-# l12 = ll[11]
-# l4 = 2
-# l5 = 1
-# xx = [word['[START]']] + xt[0] + [word['[SEP]']] + xt[1] + [word['[END]']]
-# xx2 = [word['[START]']] + xt[1] + [word['[SEP]']] + xt[2] + [word['[END]']]
+# temp_age = model(np.array(age_dic_x))
 
-# xx = xx + [0] * (maxlen - len(xx))
-# xx2 = xx2 + [0] * (maxlen - len(xx2))
+# age_dic = np.zeros(128)
+# for tg in temp_age:
+#     age_dic += tg
 
-# X = [np.array([xt[0]]),np.array([xt[1]])]
-# print(X[0].shape)
-# # print(X)
-# re = model.predict(X)
-# print(re.tolist())
+# age_dic = age_dic / age_cnt
+# np.save('emb/age',age_dic)
+# f.close()
+
+# f = open('dictionary_location.txt',encoding='utf-8')
+# location_dic_x = []
+# location_cnt = 0
+# for l in f:
+#     if l.startswith('//'):
+#         continue
+#     l = l.replace('#','')
+#     temp = []
+#     temp = sp.encode_as_ids(l.strip())
+#     temp = temp + [0] * (maxlen - len(temp))
+#     location_cnt += 1
+#     location_dic_x.append(temp)
+
+# temp_location = model(np.array(location_dic_x))
+
+# location_dic = np.zeros(128)
+# for tg in temp_location:
+#     location_dic += tg
+
+# location_dic = location_dic / location_cnt
+# np.save('emb/location',location_dic)
+# f.close()
+
+# for _ in range(4):
+#     temp = []#[word['[START]']]
+#     ww = www[_]
+#     # ww = '페미들 극혐 버려지들'
+#     temp = sp.encode_as_ids(ww)
+#     print(sp.encode_as_pieces(ww))
+#     ll.append(len(temp))
+#     # for w in ww:
+#     #     temp.append(word[w])
+#     # temp = temp# + [word['[SEP]']]
+#     temp = temp + [0] * (maxlen - len(temp))
+#     xt.append(temp)
+# l1 = ll[0]# + 2
+# l2 = ll[1]#5  # + 2
+# l3 = ll[2]#4  # + 2
+
+# # l4 = ll[3]
+# # l5 = ll[4]
+# # l6 = ll[5]
+# # l7 = ll[6]
+# # l8 = ll[7]
+# # l9 = ll[8]
+# # l10 = ll[9]
+# # l11 = ll[10]
+# # l12 = ll[11]
+# # l4 = 2
+# # l5 = 1
+# # xx = [word['[START]']] + xt[0] + [word['[SEP]']] + xt[1] + [word['[END]']]
+# # xx2 = [word['[START]']] + xt[1] + [word['[SEP]']] + xt[2] + [word['[END]']]
+
+# # xx = xx + [0] * (maxlen - len(xx))
+# # xx2 = xx2 + [0] * (maxlen - len(xx2))
+
+# # X = [np.array([xt[0]]),np.array([xt[1]])]
+# # print(X[0].shape)
+# # # print(X)
+# # re = model.predict(X)
+# # print(re.tolist())
 
 
-# X = [np.array([xt[0]]),np.array([xt[2]])]
-# re = model.predict(X)
-# print(re.tolist())
+# # X = [np.array([xt[0]]),np.array([xt[2]])]
+# # re = model.predict(X)
+# # print(re.tolist())
 
-# X = [np.array([xt[3]]),np.array([xt[4]])]
-# re = model.predict(X)
-# print(re.tolist())
+# # X = [np.array([xt[3]]),np.array([xt[4]])]
+# # re = model.predict(X)
+# # print(re.tolist())
 
-# import sys
-# sys.exit()
+# # import sys
+# # sys.exit()
 
-# pred = model(np.array(xt))
-# print(pred)
+# # pred = model(np.array(xt))
+# # print(pred)
 
 
-print('model.summary')
-model.summary()
-pr = model(np.array(xt))
-pred1 = pr[0]
-pred2 = pr[1]#(pr[1] + pr[2]) / 2
-pred3 = pr[2]
-# seed = np.load('gen_seed.npy')
+# print('model.summary')
+# model.summary()
+# pr = model(np.array(xt))
+# pred1 = pr[0]
+# pred2 = pr[1]#(pr[1] + pr[2]) / 2
+# pred3 = pr[2]
+# pred4 = pr[3]
+# # seed = np.load('gen_seed.npy')
 model.save('emb/embedding_model')
 
-print(www[0])
-print('성:',cos_sim(pred1,gen_dic),'정치:',cos_sim(pred1,soc_dic))
-print(www[1])
-print('성:',cos_sim(pred2,gen_dic),'정치:',cos_sim(pred2,soc_dic))
-print(www[2])
-print('성:',cos_sim(pred3,gen_dic),'정치:',cos_sim(pred3,soc_dic))
+# print(www[0])
+# print('성:',cos_sim(pred1,gen_dic),'정치:',cos_sim(pred1,soc_dic),'연령:',cos_sim(pred1,age_dic),'지역:',cos_sim(pred1,location_dic))
+# print(www[1])
+# print('성:',cos_sim(pred2,gen_dic),'정치:',cos_sim(pred2,soc_dic),'연령:',cos_sim(pred2,age_dic),'지역:',cos_sim(pred2,location_dic))
+# print(www[2])
+# print('성:',cos_sim(pred3,gen_dic),'정치:',cos_sim(pred3,soc_dic),'연령:',cos_sim(pred3,age_dic),'지역:',cos_sim(pred3,location_dic))
+# print(www[3])
+# print('성:',cos_sim(pred4,gen_dic),'정치:',cos_sim(pred4,soc_dic),'연령:',cos_sim(pred4,age_dic),'지역:',cos_sim(pred4,location_dic))
 
-model = tf.keras.models.load_model('embedding.model')
-pred = model(np.array(xt))
-print(pred)
+# model = tf.keras.models.load_model('embedding.model')
+# pred = model(np.array(xt))
+# print(pred)
 # model2 = tf.keras.models.Model(inputs=input2,outputs=output2)
 # print('model.summary2')
 # model2.summary()

@@ -20,14 +20,17 @@ def to_numpy(file,spm,batch_size=32):
         X = []
         Y = []
         for l in rd:
-            line = l[1]
+            line = l[0]
             y_gen = l[2]
-            y_soc = l[3]
+            # y_soc = l[3]
+            # y_soc = l[3]
+            # y_age = l[4]
+            # y_location = l[5]
             sbw = spm.encode_as_ids(line)
             sbw = sbw + [0] * (maxlen - len(sbw))
             X.append(sbw)
-            Y.append([float(y_gen),float(y_soc)])
-
+            # Y.append([[float(y_gen)],[float(y_soc)],[float(y_age)],[float(y_location)]])
+            Y.append([float(y_gen)])#,float(y_soc)])
             if len(X) == batch_size:
                 X = np.array(X)
                 Y = np.array(Y)
@@ -49,7 +52,7 @@ def to_numpy(file,spm,batch_size=32):
     length = sorted(length,reverse=True)
     print(length[:50])
 
-if False:
+if True:
     inputf = f'preprocessing/ht_origin.txt'
 
     spm_train(inputf)
